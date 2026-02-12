@@ -1,0 +1,77 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100svh;
+  background: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+}
+
+/* PARTICLE CONTAINER */
+#particle-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* FLOATING PARTICLES */
+.particle {
+  position: absolute;
+  width: var(--dim);
+  height: var(--dim);
+  left: var(--pos-x);
+  bottom: -12rem;
+  background: rgba(0, 200, 255, 0.35);
+  border-radius: 50%;
+  filter: blur(2px);
+  animation: floatUp var(--dur) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform;
+}
+
+@keyframes floatUp {
+  to {
+    transform: translateY(calc(-1 * var(--uplift)));
+    opacity: 0;
+  }
+}
+
+/* CARD */
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 360px);
+  padding: 22px;
+  border-radius: 14px;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  text-align: center;
+  box-shadow: 0 0 30px rgba(0, 200, 255, 0.3);
+}
+
+/* BUTTON */
+.btn {
+  display: block;
+  margin-top: 14px;
+  padding: 12px;
+  background: #00c8ff;
+  color: black;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* MOBILE OPT */
+@media (max-width: 600px) {
+  .particle {
+    filter: blur(1.5px);
+  }
+  }
