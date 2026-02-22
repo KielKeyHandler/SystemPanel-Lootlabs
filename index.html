@@ -77,7 +77,6 @@
     <p class="sub">Visit the link below to unlock Continue</p>
     <div class="divider"></div>
 
-    <!-- STEP 1: Visit the link -->
     <div class="btn-wrap">
       <a class="visit-btn" id="visitBtn" href="#" target="_blank" rel="noopener" onclick="onVisit()">
         <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -87,7 +86,6 @@
 
     <p class="status-text" id="statusText">⚠ You must visit the link first</p>
 
-    <!-- STEP 2: Continue (locked until link visited + returned) -->
     <div class="btn-wrap">
       <div class="btn-pulse" id="continuePulse" style="display:none"></div>
       <button class="btn locked" id="continueBtn" disabled>
@@ -106,44 +104,85 @@
 
 <script>
   // ══════════════════════════════════════════════════
-  //  PASTE YOUR CHECKPOINT 1 LINKVERTISE/LOOTLABS URL
+  //  PASTE YOUR CHECKPOINT X LINKVERTISE/LOOTLABS URL
   const CHECKPOINT_LINK = 'https://lootdest.org/s?WzltfxQc';
+  //  CHANGE THIS PER CHECKPOINT: cp1_done / cp2_done / cp3_done
+  const SESSION_KEY = 'cp1_done';
+  //  NEXT PAGE: checkpoint2.html / checkpoint3.html / key.html
+  const NEXT_PAGE = 'checkpoint2.html';
   // ══════════════════════════════════════════════════
 
   let visited = false;
-  let checking = false;
+  let linkOpened = false;
+  let pollInterval = null;
 
   document.getElementById('visitBtn').href = CHECKPOINT_LINK;
 
   function onVisit() {
-    if (visited) return;
-    // Wait 3s then start listening for the user to return
-    setTimeout(startChecking, 3000);
+    if (linkOpened) return;
+    linkOpened = true;
+
+    // Set a flag in sessionStorage immediately when they click
+    sessionStorage.setItem(SESSION_KEY + '_clicked', '1');
+
+    // Start the status message after short delay
+    setTimeout(() => {
+      if (!visited) {
+        document.getElementById('statusText').innerHTML =
+          '<span class="spinner"></span> Complete the link then come back here...';
+      }
+    }, 1500);
+
+    // Start polling immediately — catch return by ANY method
+    startPolling();
   }
 
-  function startChecking() {
-    if (checking || visited) return;
-    checking = true;
-    const statusEl = document.getElementById('statusText');
-    statusEl.innerHTML = '<span class="spinner"></span> Waiting for you to complete the link...';
-    window.addEventListener('focus', onReturn, { once: true });
-    document.addEventListener('visibilitychange', onVisibilityReturn);
+  function startPolling() {
+    if (pollInterval) return;
+
+    // Poll every 500ms — catches mobile browser tab switching reliably
+    pollInterval = setInterval(() => {
+      if (visited) { clearInterval(pollInterval); return; }
+      if (document.visibilityState === 'visible' && linkOpened) {
+        onReturn();
+      }
+    }, 500);
+
+    // Also listen to every possible return event
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
   }
 
-  function onVisibilityReturn() {
-    if (document.visibilityState === 'visible' && checking && !visited) onReturn();
+  function handleVisibility() {
+    if (document.visibilityState === 'visible' && linkOpened && !visited) {
+      onReturn();
+    }
+  }
+
+  function handleFocus() {
+    if (linkOpened && !visited) onReturn();
+  }
+
+  function handlePageShow(e) {
+    // Fires when navigating back — very reliable on mobile
+    if (linkOpened && !visited) onReturn();
   }
 
   function onReturn() {
     if (visited) return;
-    document.removeEventListener('visibilitychange', onVisibilityReturn);
-    setTimeout(unlock, 1000);
+    clearInterval(pollInterval);
+    document.removeEventListener('visibilitychange', handleVisibility);
+    window.removeEventListener('focus', handleFocus);
+    window.removeEventListener('pageshow', handlePageShow);
+    // Small grace period then unlock
+    setTimeout(unlock, 800);
   }
 
   function unlock() {
+    if (visited) return;
     visited = true;
-    checking = false;
-    sessionStorage.setItem('cp1_done', '1');
+    sessionStorage.setItem(SESSION_KEY, '1');
 
     document.getElementById('statusText').textContent = '✓ Link completed — you may continue!';
     document.getElementById('statusText').classList.add('unlocked');
@@ -164,11 +203,22 @@
     if (!visited) return;
     this.classList.add('verified');
     document.getElementById('continueLabel').innerHTML = '✓ &nbsp;Verified';
-    setTimeout(() => window.location.href = 'checkpoint2.html', 700);
+    setTimeout(() => window.location.href = NEXT_PAGE, 700);
   });
 
-  // Restore if already done this session (e.g. page refresh)
-  if (sessionStorage.getItem('cp1_done')) { visited = true; unlock(); }
+  // Restore if already completed this session
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    visited = true; linkOpened = true;
+    unlock();
+  }
+  // Also restore if they clicked but hadn't returned yet
+  else if (sessionStorage.getItem(SESSION_KEY + '_clicked')) {
+    linkOpened = true;
+    document.getElementById('statusText').innerHTML =
+      '<span class="spinner"></span> Complete the link then come back here...';
+    startPolling();
+  }
+
 
   /* Stars */
   const starsEl = document.getElementById('stars');
