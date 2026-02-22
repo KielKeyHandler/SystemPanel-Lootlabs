@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Garcia's Script – Checkpoint 1</title>
 <link rel="stylesheet" href="style.css">
+<script src="transition.js"></script>
 <style>
   .btn.locked {
     opacity: 0.4; cursor: not-allowed; filter: grayscale(0.4);
@@ -203,7 +204,7 @@
     if (!visited) return;
     this.classList.add('verified');
     document.getElementById('continueLabel').innerHTML = '✓ &nbsp;Verified';
-    setTimeout(() => window.location.href = NEXT_PAGE, 700);
+    navigateTo(NEXT_PAGE);
   });
 
   // Restore if already completed this session
@@ -240,6 +241,5 @@
   }
   updateClock(); setInterval(updateClock, 1000);
 </script>
-<script src="transition.js"></script>
 </body>
 </html>
