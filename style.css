@@ -301,3 +301,57 @@ h1.gold-title { color: var(--gold); text-shadow: 0 0 20px rgba(255,210,80,0.5); 
   .btn:hover { transform: none; }
   .btn:active { transform: scale(0.97); }
 }
+
+/* ══════════════════════════════════════════
+   PAGE TRANSITION
+══════════════════════════════════════════ */
+
+/* Overlay that sweeps across on exit */
+.transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: linear-gradient(135deg,
+    rgba(178,132,255,0.0) 0%,
+    rgba(178,132,255,1.0) 50%,
+    rgb(5,5,5) 100%
+  );
+  transform: translateX(-100%);
+}
+
+/* EXIT — sweeps in from left, covers screen */
+.transition-overlay.exit {
+  pointer-events: all;
+  animation: sweepIn 0.55s cubic-bezier(0.7,0,0.3,1) forwards;
+}
+
+/* ENTER — screen starts covered, sweeps out to right */
+.transition-overlay.enter {
+  transform: translateX(0%);
+  animation: sweepOut 0.55s cubic-bezier(0.7,0,0.3,1) 0.1s forwards;
+}
+
+@keyframes sweepIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0%); }
+}
+
+@keyframes sweepOut {
+  from { transform: translateX(0%); }
+  to   { transform: translateX(100%); }
+}
+
+/* Card fades out with the exit sweep */
+body.exiting .card {
+  animation: cardOut 0.4s ease forwards;
+}
+@keyframes cardOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-12px) scale(0.97); }
+}
+
+/* Card fades in on page enter */
+body.entering .card {
+  animation: cardIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s both;
+}
