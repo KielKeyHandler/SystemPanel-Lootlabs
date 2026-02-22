@@ -1,27 +1,189 @@
-<script>
-if (!localStorage.getItem("cp1")) location.href="index.html";
-</script>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Checkpoint 2</title>
+<title>Garcia's Script – Checkpoint 2</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .btn.locked {
+    opacity: 0.4; cursor: not-allowed; filter: grayscale(0.4);
+  }
+  .btn.locked:hover { transform: none !important; box-shadow: 0 0 8px rgba(178,132,255,0.35) !important; }
+
+  .visit-btn {
+    position: relative; width: 100%;
+    padding: clamp(12px,3vw,15px) 28px;
+    border: 2px solid var(--border); border-radius: 15px;
+    cursor: pointer; overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px,3.5vw,15px); font-weight: 800;
+    letter-spacing: 2px; color: var(--text); text-transform: uppercase;
+    background: linear-gradient(135deg, rgba(178,132,255,0.28) 0%, rgba(140,90,220,0.20) 100%);
+    box-shadow: 0 0 12px rgba(178,132,255,0.5), 0 0 24px rgba(178,132,255,0.2);
+    transition: transform 0.15s ease, box-shadow 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+    text-decoration: none; display: flex;
+    align-items: center; justify-content: center; gap: 10px;
+  }
+  .visit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 18px rgba(178,132,255,0.75), 0 0 36px rgba(178,132,255,0.35); }
+  .visit-btn:active { transform: scale(0.98); }
+  .visit-btn svg { width:16px; height:16px; stroke:var(--border); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+
+  .status-text {
+    font-size: clamp(10px,2.8vw,12px); font-weight: 700;
+    color: rgba(178,132,255,0.6); text-align: center; letter-spacing: 0.5px;
+    transition: color 0.3s;
+  }
+  .status-text.unlocked { color: var(--green); }
+
+  .spinner {
+    display: inline-block; width: 10px; height: 10px;
+    border: 2px solid rgba(178,132,255,0.3); border-top-color: var(--border);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    margin-right: 6px; vertical-align: middle;
+  }
+</style>
 </head>
 <body>
 
-<div id="particle-container"></div>
+<div class="stars" id="stars"></div>
+<div class="orbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
 
 <div class="card">
-  <h1>Checkpoint 2</h1>
-  <a class="btn" href="https://lootdest.org/s?USA5e8wb"
-     onclick="localStorage.setItem('cp2','1')">
-    Continue
-  </a>
+  <div class="titlebar">
+    <span class="script-name">Garcia's Script</span>
+    <span class="datetime" id="clock"></span>
+  </div>
+  <div class="content-box">
+
+    <div class="step-track">
+      <div class="step-node done">✓</div>
+      <div class="step-line"><div class="step-line-fill" style="width:100%"></div></div>
+      <div class="step-node active">2</div>
+      <div class="step-line"><div class="step-line-fill" style="width:0%"></div></div>
+      <div class="step-node">3</div>
+      <div class="step-line"><div class="step-line-fill" style="width:0%"></div></div>
+      <div class="step-node key-node">🔑</div>
+    </div>
+
+    <div class="badge cp">Checkpoint 2 of 3</div>
+
+    <div class="icon-wrap">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+
+    <h1>Checkpoint 2</h1>
+    <p class="sub">You're halfway there — keep going!</p>
+    <div class="divider"></div>
+
+    <div class="btn-wrap">
+      <a class="visit-btn" id="visitBtn" href="#" target="_blank" rel="noopener" onclick="onVisit()">
+        <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open Checkpoint Link
+      </a>
+    </div>
+
+    <p class="status-text" id="statusText">⚠ You must visit the link first</p>
+
+    <div class="btn-wrap">
+      <div class="btn-pulse" id="continuePulse" style="display:none"></div>
+      <button class="btn locked" id="continueBtn" disabled>
+        <span class="btn-label" id="continueLabel">🔒 &nbsp;Locked</span>
+      </button>
+    </div>
+
+    <div class="progress">
+      <div class="dot done"></div>
+      <div class="dot active"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
 </div>
 
-<script src="particles.js"></script>
+<script>
+  // ══════════════════════════════════════════════════
+  //  PASTE YOUR CHECKPOINT 2 LINKVERTISE/LOOTLABS URL
+  const CHECKPOINT_LINK = 'https://linkvertise.com/YOUR_LINK_HERE';
+  // ══════════════════════════════════════════════════
+
+  let visited = false;
+  let checking = false;
+
+  document.getElementById('visitBtn').href = CHECKPOINT_LINK;
+
+  function onVisit() {
+    if (visited) return;
+    setTimeout(startChecking, 3000);
+  }
+
+  function startChecking() {
+    if (checking || visited) return;
+    checking = true;
+    const statusEl = document.getElementById('statusText');
+    statusEl.innerHTML = '<span class="spinner"></span> Waiting for you to complete the link...';
+    window.addEventListener('focus', onReturn, { once: true });
+    document.addEventListener('visibilitychange', onVisibilityReturn);
+  }
+
+  function onVisibilityReturn() {
+    if (document.visibilityState === 'visible' && checking && !visited) onReturn();
+  }
+
+  function onReturn() {
+    if (visited) return;
+    document.removeEventListener('visibilitychange', onVisibilityReturn);
+    setTimeout(unlock, 1000);
+  }
+
+  function unlock() {
+    visited = true;
+    checking = false;
+    sessionStorage.setItem('cp2_done', '1');
+
+    document.getElementById('statusText').textContent = '✓ Link completed — you may continue!';
+    document.getElementById('statusText').classList.add('unlocked');
+
+    const visitBtn = document.getElementById('visitBtn');
+    visitBtn.style.opacity = '0.35';
+    visitBtn.style.pointerEvents = 'none';
+
+    const continueBtn = document.getElementById('continueBtn');
+    continueBtn.classList.remove('locked');
+    continueBtn.disabled = false;
+    document.getElementById('continuePulse').style.display = 'block';
+    document.getElementById('continueLabel').innerHTML =
+      'Continue <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--border);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+  }
+
+  document.getElementById('continueBtn').addEventListener('click', function() {
+    if (!visited) return;
+    this.classList.add('verified');
+    document.getElementById('continueLabel').innerHTML = '✓ &nbsp;Verified';
+    setTimeout(() => window.location.href = 'checkpoint3.html', 700);
+  });
+
+  if (sessionStorage.getItem('cp2_done')) { visited = true; unlock(); }
+
+  /* Stars */
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 110; i++) {
+    const s = document.createElement('div'); s.className = 'star';
+    const sz = Math.random() * 2 + 0.5;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*5}s;--delay:${Math.random()*7}s;--op:${0.2+Math.random()*0.6};`;
+    starsEl.appendChild(s);
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    document.getElementById('clock').textContent =
+      `${days[now.getDay()]} ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+  }
+  updateClock(); setInterval(updateClock, 1000);
+</script>
 </body>
 </html>
