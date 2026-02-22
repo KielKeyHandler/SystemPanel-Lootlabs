@@ -104,43 +104,85 @@
 
 <script>
   // ══════════════════════════════════════════════════
-  //  PASTE YOUR CHECKPOINT 2 LINKVERTISE/LOOTLABS URL
-  const CHECKPOINT_LINK = 'https://linkvertise.com/YOUR_LINK_HERE';
+  //  PASTE YOUR CHECKPOINT X LINKVERTISE/LOOTLABS URL
+  const CHECKPOINT_LINK = 'https://linkvertise.com/YOUR_CP2_LINK_HERE';
+  //  CHANGE THIS PER CHECKPOINT: cp1_done / cp2_done / cp3_done
+  const SESSION_KEY = 'cp2_done';
+  //  NEXT PAGE: checkpoint2.html / checkpoint3.html / key.html
+  const NEXT_PAGE = 'checkpoint3.html';
   // ══════════════════════════════════════════════════
 
   let visited = false;
-  let checking = false;
+  let linkOpened = false;
+  let pollInterval = null;
 
   document.getElementById('visitBtn').href = CHECKPOINT_LINK;
 
   function onVisit() {
-    if (visited) return;
-    setTimeout(startChecking, 3000);
+    if (linkOpened) return;
+    linkOpened = true;
+
+    // Set a flag in sessionStorage immediately when they click
+    sessionStorage.setItem(SESSION_KEY + '_clicked', '1');
+
+    // Start the status message after short delay
+    setTimeout(() => {
+      if (!visited) {
+        document.getElementById('statusText').innerHTML =
+          '<span class="spinner"></span> Complete the link then come back here...';
+      }
+    }, 1500);
+
+    // Start polling immediately — catch return by ANY method
+    startPolling();
   }
 
-  function startChecking() {
-    if (checking || visited) return;
-    checking = true;
-    const statusEl = document.getElementById('statusText');
-    statusEl.innerHTML = '<span class="spinner"></span> Waiting for you to complete the link...';
-    window.addEventListener('focus', onReturn, { once: true });
-    document.addEventListener('visibilitychange', onVisibilityReturn);
+  function startPolling() {
+    if (pollInterval) return;
+
+    // Poll every 500ms — catches mobile browser tab switching reliably
+    pollInterval = setInterval(() => {
+      if (visited) { clearInterval(pollInterval); return; }
+      if (document.visibilityState === 'visible' && linkOpened) {
+        onReturn();
+      }
+    }, 500);
+
+    // Also listen to every possible return event
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
   }
 
-  function onVisibilityReturn() {
-    if (document.visibilityState === 'visible' && checking && !visited) onReturn();
+  function handleVisibility() {
+    if (document.visibilityState === 'visible' && linkOpened && !visited) {
+      onReturn();
+    }
+  }
+
+  function handleFocus() {
+    if (linkOpened && !visited) onReturn();
+  }
+
+  function handlePageShow(e) {
+    // Fires when navigating back — very reliable on mobile
+    if (linkOpened && !visited) onReturn();
   }
 
   function onReturn() {
     if (visited) return;
-    document.removeEventListener('visibilitychange', onVisibilityReturn);
-    setTimeout(unlock, 1000);
+    clearInterval(pollInterval);
+    document.removeEventListener('visibilitychange', handleVisibility);
+    window.removeEventListener('focus', handleFocus);
+    window.removeEventListener('pageshow', handlePageShow);
+    // Small grace period then unlock
+    setTimeout(unlock, 800);
   }
 
   function unlock() {
+    if (visited) return;
     visited = true;
-    checking = false;
-    sessionStorage.setItem('cp2_done', '1');
+    sessionStorage.setItem(SESSION_KEY, '1');
 
     document.getElementById('statusText').textContent = '✓ Link completed — you may continue!';
     document.getElementById('statusText').classList.add('unlocked');
@@ -161,10 +203,22 @@
     if (!visited) return;
     this.classList.add('verified');
     document.getElementById('continueLabel').innerHTML = '✓ &nbsp;Verified';
-    setTimeout(() => window.location.href = 'checkpoint3.html', 700);
+    setTimeout(() => window.location.href = NEXT_PAGE, 700);
   });
 
-  if (sessionStorage.getItem('cp2_done')) { visited = true; unlock(); }
+  // Restore if already completed this session
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    visited = true; linkOpened = true;
+    unlock();
+  }
+  // Also restore if they clicked but hadn't returned yet
+  else if (sessionStorage.getItem(SESSION_KEY + '_clicked')) {
+    linkOpened = true;
+    document.getElementById('statusText').innerHTML =
+      '<span class="spinner"></span> Complete the link then come back here...';
+    startPolling();
+  }
+
 
   /* Stars */
   const starsEl = document.getElementById('stars');
@@ -175,6 +229,7 @@
     starsEl.appendChild(s);
   }
 
+  /* Clock */
   function updateClock() {
     const now = new Date();
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -185,5 +240,6 @@
   }
   updateClock(); setInterval(updateClock, 1000);
 </script>
+<script src="transition.js"></script>
 </body>
 </html>
