@@ -1,122 +1,139 @@
-/* ── Garcia's Script – Dissolve Page Transition ── */
+/* ── Garcia's Script – Eclipse Page Transition ── */
 
 (function () {
-  const PIXEL_SIZE  = 14;
-  const DISSOLVE_MS = 520;
-  const HOLD_MS     = 80;
-  const COLORS = [
-    'rgba(178,132,255,1)',
-    'rgba(140,90,220,1)',
-    'rgba(100,50,180,1)',
-    'rgba(30,10,60,1)',
-    'rgba(5,5,5,1)',
-  ];
-  const randColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
+  const EXPAND_MS = 480;  // time for circle to cover screen
+  const HOLD_MS   = 60;   // pause fully covered
+  const SHRINK_MS = 480;  // time for circle to reveal new page
 
-  let canvas, ctx;
+  let canvas, ctx, W, H, maxR;
 
   function init() {
     canvas = document.createElement('canvas');
-    canvas.id = 'dissolve-canvas';
-    canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:0;';
+    canvas.id = 'eclipse-canvas';
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
     document.body.appendChild(canvas);
     ctx = canvas.getContext('2d');
     resize();
     window.addEventListener('resize', resize);
 
-    // Entrance: start covered, dissolve away
-    canvas.style.opacity = '1';
+    // Entrance: start fully covered, shrink away
+    drawFull();
     canvas.style.pointerEvents = 'all';
-    ctx.fillStyle = 'rgb(5,5,5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    setTimeout(() => dissolveOut(), 60);
+    setTimeout(() => shrink(() => {
+      canvas.style.pointerEvents = 'none';
+      document.body.classList.remove('exiting');
+    }), 60);
   }
 
   function resize() {
     if (!canvas) return;
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    maxR = Math.sqrt(W * W + H * H) / 2 + 2; // radius to cover full screen
   }
 
-  function buildGrid() {
-    const cols = Math.ceil(canvas.width / PIXEL_SIZE) + 1;
-    const rows = Math.ceil(canvas.height / PIXEL_SIZE) + 1;
-    const cells = [];
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++)
-        cells.push({ x: c * PIXEL_SIZE, y: r * PIXEL_SIZE });
-    // Shuffle
-    for (let i = cells.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [cells[i], cells[j]] = [cells[j], cells[i]];
-    }
-    return cells;
+  function cx() { return W / 2; }
+  function cy() { return H / 2; }
+
+  /* Draw a full solid circle covering entire screen */
+  function drawFull() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgb(5,5,5)';
+    ctx.beginPath();
+    ctx.arc(cx(), cy(), maxR, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  function dissolveIn(onComplete) {
-    const cells  = buildGrid();
-    const total  = cells.length;
-    const colors = cells.map(() => randColor());
-    const start  = performance.now();
-    canvas.style.opacity = '1';
+  /* Easing — ease in-out cubic */
+  function ease(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  /* Expand: circle grows from 0 to full */
+  function expand(onComplete) {
+    const start = performance.now();
     canvas.style.pointerEvents = 'all';
-    let last = 0;
 
     (function draw(now) {
-      const p      = Math.min((now - start) / DISSOLVE_MS, 1);
-      const filled = Math.floor(p * total);
-      for (let i = last; i < filled; i++) {
-        ctx.fillStyle = colors[i];
-        ctx.fillRect(cells[i].x, cells[i].y, PIXEL_SIZE + 1, PIXEL_SIZE + 1);
-      }
-      last = filled;
-      if (p < 1) {
+      const t = Math.min((now - start) / EXPAND_MS, 1);
+      const r = ease(t) * maxR;
+
+      ctx.clearRect(0, 0, W, H);
+
+      /* Outer glow ring just before the edge */
+      const glowR = r + 6;
+      const grd = ctx.createRadialGradient(cx(), cy(), Math.max(0, r - 18), cx(), cy(), glowR);
+      grd.addColorStop(0, 'rgba(178,132,255,0.0)');
+      grd.addColorStop(0.5, 'rgba(178,132,255,0.55)');
+      grd.addColorStop(1, 'rgba(178,132,255,0.0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(cx(), cy(), glowR, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* Main dark circle */
+      ctx.fillStyle = 'rgb(5,5,5)';
+      ctx.beginPath();
+      ctx.arc(cx(), cy(), r, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (t < 1) {
         requestAnimationFrame(draw);
       } else {
-        ctx.fillStyle = 'rgb(5,5,5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawFull();
         setTimeout(onComplete, HOLD_MS);
       }
     })(performance.now());
   }
 
-  function dissolveOut() {
-    const cells  = buildGrid();
-    const total  = cells.length;
-    const colors = cells.map(() => randColor());
-    ctx.fillStyle = 'rgb(5,5,5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  /* Shrink: circle shrinks from full to 0 */
+  function shrink(onComplete) {
     const start = performance.now();
 
     (function draw(now) {
-      const p   = Math.min((now - start) / DISSOLVE_MS, 1);
-      const rev = Math.floor(p * total);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let i = rev; i < total; i++) {
-        ctx.fillStyle = colors[i];
-        ctx.fillRect(cells[i].x, cells[i].y, PIXEL_SIZE + 1, PIXEL_SIZE + 1);
+      const t = Math.min((now - start) / SHRINK_MS, 1);
+      const r = (1 - ease(t)) * maxR;
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (r > 0.5) {
+        /* Outer glow ring */
+        const glowR = r + 6;
+        const grd = ctx.createRadialGradient(cx(), cy(), Math.max(0, r - 18), cx(), cy(), glowR);
+        grd.addColorStop(0, 'rgba(178,132,255,0.0)');
+        grd.addColorStop(0.5, 'rgba(178,132,255,0.55)');
+        grd.addColorStop(1, 'rgba(178,132,255,0.0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(cx(), cy(), glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* Main dark circle */
+        ctx.fillStyle = 'rgb(5,5,5)';
+        ctx.beginPath();
+        ctx.arc(cx(), cy(), r, 0, Math.PI * 2);
+        ctx.fill();
       }
-      if (p < 1) {
+
+      if (t < 1) {
         requestAnimationFrame(draw);
       } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.style.opacity = '0';
-        canvas.style.pointerEvents = 'none';
-        document.body.classList.remove('exiting');
+        ctx.clearRect(0, 0, W, H);
+        if (onComplete) onComplete();
       }
     })(performance.now());
   }
 
-  // Public navigate — call this instead of window.location.href
+  /* Public navigate */
   window.navigateTo = function (url) {
     if (document.body.classList.contains('exiting')) return;
     document.body.classList.add('exiting');
-    dissolveIn(function () {
+    expand(function () {
       window.location.href = url;
     });
   };
 
-  // Init after DOM is ready
+  /* Init after DOM ready */
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
