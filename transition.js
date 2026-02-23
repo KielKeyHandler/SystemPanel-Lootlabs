@@ -1,41 +1,62 @@
 /* ── Garcia's Script – Eclipse Page Transition ── */
-
 (function () {
-  const EXPAND_MS = 480;  // time for circle to cover screen
-  const HOLD_MS   = 60;   // pause fully covered
-  const SHRINK_MS = 480;  // time for circle to reveal new page
 
-  let canvas, ctx, W, H, maxR;
+  var SHRINK_MS = 480;  // entrance (in) duration
+  var EXPAND_MS = 480;  // exit (out) duration
+  var HOLD_MS   = 80;   // pause when fully covered before navigating
 
+  var canvas, ctx, W, H, maxR;
+  var isAnimating = false;
+  var rafId = null;
+
+  /* ─────────────────────────────────────────
+     INIT — called after DOM is ready
+  ───────────────────────────────────────── */
   function init() {
     canvas = document.createElement('canvas');
     canvas.id = 'eclipse-canvas';
-    canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
+    canvas.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:9999',
+      'pointer-events:none',
+      'display:block',
+      'will-change:transform',   // GPU layer — keeps rAF running during nav
+    ].join(';');
     document.body.appendChild(canvas);
     ctx = canvas.getContext('2d');
+
     resize();
     window.addEventListener('resize', resize);
 
-    // Entrance: start fully covered, shrink away
+    // Page entrance: start black, shrink open
     drawFull();
     canvas.style.pointerEvents = 'all';
-    setTimeout(() => shrink(() => {
-      canvas.style.pointerEvents = 'none';
-      document.body.classList.remove('exiting');
-    }), 60);
+    setTimeout(function () {
+      animateShrink(function () {
+        canvas.style.pointerEvents = 'none';
+        isAnimating = false;
+      });
+    }, 50);
   }
 
+  /* ─────────────────────────────────────────
+     HELPERS
+  ───────────────────────────────────────── */
   function resize() {
     if (!canvas) return;
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    maxR = Math.sqrt(W * W + H * H) / 2 + 2; // radius to cover full screen
+    maxR = Math.hypot(W, H) / 2 + 6;
   }
 
   function cx() { return W / 2; }
   function cy() { return H / 2; }
 
-  /* Draw a full solid circle covering entire screen */
+  function ease(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
   function drawFull() {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = 'rgb(5,5,5)';
@@ -44,96 +65,113 @@
     ctx.fill();
   }
 
-  /* Easing — ease in-out cubic */
-  function ease(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
+  function drawCircle(r) {
+    ctx.clearRect(0, 0, W, H);
+    if (r <= 0) return;
 
-  /* Expand: circle grows from 0 to full */
-  function expand(onComplete) {
-    const start = performance.now();
-    canvas.style.pointerEvents = 'all';
-
-    (function draw(now) {
-      const t = Math.min((now - start) / EXPAND_MS, 1);
-      const r = ease(t) * maxR;
-
-      ctx.clearRect(0, 0, W, H);
-
-      /* Outer glow ring just before the edge */
-      const glowR = r + 6;
-      const grd = ctx.createRadialGradient(cx(), cy(), Math.max(0, r - 18), cx(), cy(), glowR);
-      grd.addColorStop(0, 'rgba(178,132,255,0.0)');
-      grd.addColorStop(0.5, 'rgba(178,132,255,0.55)');
-      grd.addColorStop(1, 'rgba(178,132,255,0.0)');
+    // Purple glow halo at edge
+    if (r > 4) {
+      var inner = Math.max(0, r - 22);
+      var outer = r + 10;
+      var grd = ctx.createRadialGradient(cx(), cy(), inner, cx(), cy(), outer);
+      grd.addColorStop(0,   'rgba(178,132,255,0.00)');
+      grd.addColorStop(0.45,'rgba(178,132,255,0.65)');
+      grd.addColorStop(1,   'rgba(178,132,255,0.00)');
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.arc(cx(), cy(), glowR, 0, Math.PI * 2);
+      ctx.arc(cx(), cy(), outer, 0, Math.PI * 2);
       ctx.fill();
+    }
 
-      /* Main dark circle */
-      ctx.fillStyle = 'rgb(5,5,5)';
-      ctx.beginPath();
-      ctx.arc(cx(), cy(), r, 0, Math.PI * 2);
-      ctx.fill();
+    // Dark circle
+    ctx.fillStyle = 'rgb(5,5,5)';
+    ctx.beginPath();
+    ctx.arc(cx(), cy(), r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /* ─────────────────────────────────────────
+     EXPAND (exit) — circle grows to cover screen
+     Uses setTimeout loop instead of rAF so the
+     browser can't skip frames during navigation
+  ───────────────────────────────────────── */
+  function animateExpand(onComplete) {
+    var start = null;
+    var FRAME = 1000 / 60; // ~16ms
+
+    canvas.style.pointerEvents = 'all';
+
+    function step() {
+      var now = Date.now();
+      if (start === null) start = now;
+      var elapsed = now - start;
+      var t = Math.min(elapsed / EXPAND_MS, 1);
+      var r = ease(t) * maxR;
+
+      drawCircle(r);
 
       if (t < 1) {
-        requestAnimationFrame(draw);
+        // Use setTimeout instead of rAF — survives browser unload throttling
+        setTimeout(step, FRAME);
       } else {
         drawFull();
         setTimeout(onComplete, HOLD_MS);
       }
-    })(performance.now());
+    }
+
+    step();
   }
 
-  /* Shrink: circle shrinks from full to 0 */
-  function shrink(onComplete) {
-    const start = performance.now();
+  /* ─────────────────────────────────────────
+     SHRINK (entrance) — circle shrinks to reveal page
+     rAF is fine here since we're not navigating
+  ───────────────────────────────────────── */
+  function animateShrink(onComplete) {
+    var start = performance.now();
 
-    (function draw(now) {
-      const t = Math.min((now - start) / SHRINK_MS, 1);
-      const r = (1 - ease(t)) * maxR;
-
-      ctx.clearRect(0, 0, W, H);
-
-      if (r > 0.5) {
-        /* Outer glow ring */
-        const glowR = r + 6;
-        const grd = ctx.createRadialGradient(cx(), cy(), Math.max(0, r - 18), cx(), cy(), glowR);
-        grd.addColorStop(0, 'rgba(178,132,255,0.0)');
-        grd.addColorStop(0.5, 'rgba(178,132,255,0.55)');
-        grd.addColorStop(1, 'rgba(178,132,255,0.0)');
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.arc(cx(), cy(), glowR, 0, Math.PI * 2);
-        ctx.fill();
-
-        /* Main dark circle */
-        ctx.fillStyle = 'rgb(5,5,5)';
-        ctx.beginPath();
-        ctx.arc(cx(), cy(), r, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    function step(now) {
+      var t = Math.min((now - start) / SHRINK_MS, 1);
+      drawCircle((1 - ease(t)) * maxR);
 
       if (t < 1) {
-        requestAnimationFrame(draw);
+        rafId = requestAnimationFrame(step);
       } else {
         ctx.clearRect(0, 0, W, H);
+        canvas.style.pointerEvents = 'none';
         if (onComplete) onComplete();
       }
-    })(performance.now());
+    }
+
+    rafId = requestAnimationFrame(step);
   }
 
-  /* Public navigate */
+  /* ─────────────────────────────────────────
+     PUBLIC — navigateTo(url)
+  ───────────────────────────────────────── */
   window.navigateTo = function (url) {
-    if (document.body.classList.contains('exiting')) return;
+    // Already mid-animation — just navigate directly
+    if (isAnimating) {
+      window.location.href = url;
+      return;
+    }
+
+    isAnimating = true;
     document.body.classList.add('exiting');
-    expand(function () {
+
+    // Hard fallback: navigate no matter what after expand + 300ms
+    var hard = setTimeout(function () {
+      window.location.href = url;
+    }, EXPAND_MS + HOLD_MS + 300);
+
+    animateExpand(function () {
+      clearTimeout(hard);
       window.location.href = url;
     });
   };
 
-  /* Init after DOM ready */
+  /* ─────────────────────────────────────────
+     BOOT
+  ───────────────────────────────────────── */
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
