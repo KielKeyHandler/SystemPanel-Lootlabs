@@ -1,183 +1,155 @@
 /* ── Garcia's Script – Key System ── */
 
-const KEY_SOURCE = 'https://raw.githubusercontent.com/kielsvu/Utility/refs/heads/Lua/Utility/Major/Main.txt';
-const COOLDOWN_MS = 20 * 60 * 60 * 1000; // 20 hours in milliseconds
-const STORAGE_KEY = 'garcia_key_data'; // localStorage key
+var KEY_SOURCE  = 'https://raw.githubusercontent.com/kielsvu/Utility/refs/heads/Lua/Utility/Major/Main.txt';
+var COOLDOWN_MS = 20 * 60 * 60 * 1000;
+var STORAGE_KEY = 'garcia_key_data';
 
-/* ── Stars helper ── */
-function spawnStars(containerId) {
-  const el = document.getElementById(containerId);
+/* ── Stars ── */
+function spawnStars(id) {
+  var el = document.getElementById(id);
   if (!el) return;
-  for (let i = 0; i < 110; i++) {
-    const s = document.createElement('div');
+  for (var i = 0; i < 110; i++) {
+    var s = document.createElement('div');
     s.className = 'star';
-    const sz = Math.random() * 2 + 0.5;
-    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*5}s;--delay:${Math.random()*7}s;--op:${0.2+Math.random()*0.6};`;
+    var sz = Math.random() * 2 + 0.5;
+    s.style.cssText = 'width:'+sz+'px;height:'+sz+'px;top:'+(Math.random()*100)+'%;left:'+(Math.random()*100)+'%;--d:'+(2+Math.random()*5)+'s;--delay:'+(Math.random()*7)+'s;--op:'+(0.2+Math.random()*0.6)+';';
     el.appendChild(s);
   }
 }
 
-/* ── Clock helper ── */
-function startClock(clockId) {
-  function update() {
-    const now = new Date();
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    const el = document.getElementById(clockId);
-    if (el) el.textContent =
-      `${days[now.getDay()]} ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+/* ── Clock ── */
+function startClock(id) {
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function tick() {
+    var now = new Date(), h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    var el = document.getElementById(id);
+    if (el) el.textContent = days[now.getDay()]+' '+pad(h)+':'+pad(m)+':'+pad(s)+' '+ap;
   }
-  update();
-  setInterval(update, 1000);
+  function pad(n) { return String(n).padStart(2,'0'); }
+  tick(); setInterval(tick, 1000);
 }
 
-/* ── Load saved key data from localStorage ── */
-function loadSavedData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
+/* ── Storage ── */
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; }
+}
+function saveDat(d) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(e) {}
+}
+function onCooldown(d) {
+  return d && d.issuedAt && (Date.now() - d.issuedAt) < COOLDOWN_MS;
+}
+function timeLeft(d) {
+  var r = COOLDOWN_MS - (Date.now() - d.issuedAt);
+  var h = Math.floor(r/3600000), m = Math.floor((r%3600000)/60000), s = Math.floor((r%60000)/1000);
+  return pad(h)+'h '+pad(m)+'m '+pad(s)+'s';
+  function pad(n) { return String(n).padStart(2,'0'); }
 }
 
-/* ── Save key data to localStorage ── */
-function saveData(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {}
-}
-
-/* ── Check if cooldown is still active ── */
-function isOnCooldown(data) {
-  if (!data || !data.issuedAt) return false;
-  return (Date.now() - data.issuedAt) < COOLDOWN_MS;
-}
-
-/* ── Format remaining cooldown time ── */
-function formatTimeLeft(data) {
-  const elapsed = Date.now() - data.issuedAt;
-  const remaining = COOLDOWN_MS - elapsed;
-  const h = Math.floor(remaining / 3600000);
-  const m = Math.floor((remaining % 3600000) / 60000);
-  const s = Math.floor((remaining % 60000) / 1000);
-  return `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
-}
-
-/* ── Fetch keys from GitHub and return as array ── */
+/* ── Fetch with retry ── */
 async function fetchKeys() {
-  const res = await fetch(KEY_SOURCE + '?nocache=' + Date.now());
-  const text = await res.text();
-  return text.split('\n').map(k => k.trim()).filter(k => k.length > 0);
+  var url = KEY_SOURCE + '?t=' + Date.now();
+  var res, lastErr;
+  for (var i = 1; i <= 3; i++) {
+    try {
+      res = await fetch(url, { method:'GET', cache:'no-store' });
+      if (res.ok) break;
+    } catch(e) {
+      lastErr = e;
+      if (i < 3) await new Promise(function(r){ setTimeout(r, 700*i); });
+    }
+  }
+  if (!res || !res.ok) throw new Error('Fetch failed');
+  var text = await res.text();
+  var keys = text.split('\n').map(function(k){ return k.trim(); }).filter(function(k){ return k.length > 0; });
+  if (!keys.length) throw new Error('Empty key list');
+  return keys;
 }
 
-/* ── Main: get a key for this user ── */
-async function getKey() {
-  const keyEl     = document.getElementById('keyValue');
-  const subEl     = document.querySelector('.sub');
-  const cooldownEl = document.getElementById('cooldownTimer');
+/* ── Pick unused key ── */
+function pickKey(all) {
+  var used = [];
+  try { used = JSON.parse(localStorage.getItem('garcia_used_keys') || '[]'); } catch(e) {}
+  var avail = all.filter(function(k){ return used.indexOf(k) === -1; });
+  if (!avail.length) { avail = all; used = []; try { localStorage.removeItem('garcia_used_keys'); } catch(e) {} }
+  var picked = avail[Math.floor(Math.random() * avail.length)];
+  used.push(picked);
+  try { localStorage.setItem('garcia_used_keys', JSON.stringify(used)); } catch(e) {}
+  return picked;
+}
 
-  // Show loading state
+/* ── Main ── */
+async function getKey() {
+  var keyEl      = document.getElementById('keyValue');
+  var subEl      = document.getElementById('subText'); // matches key.html id
+  var timerEl    = document.getElementById('cooldownTimer');
+
   if (keyEl) keyEl.textContent = 'Loading...';
 
-  // Check if user already has a valid key within 20 hours
-  const saved = loadSavedData();
-  if (saved && isOnCooldown(saved)) {
-    // Show existing key + countdown
+  var saved = loadSaved();
+  if (saved && onCooldown(saved)) {
     if (keyEl) keyEl.textContent = saved.key;
     if (subEl) subEl.textContent = 'Your existing key — resets after cooldown';
-    startCooldownTimer(saved, cooldownEl);
+    startTimer(saved, timerEl);
     return;
   }
 
-  // Fetch fresh keys from GitHub
   try {
-    const allKeys = await fetchKeys();
-
-    // Get list of previously used keys from localStorage
-    let usedKeys = [];
-    try {
-      usedKeys = JSON.parse(localStorage.getItem('garcia_used_keys') || '[]');
-    } catch (e) {}
-
-    // Filter out already-used keys
-    let available = allKeys.filter(k => !usedKeys.includes(k));
-
-    // If all keys are used, reset used list (cycle)
-    if (available.length === 0) {
-      available = allKeys;
-      localStorage.removeItem('garcia_used_keys');
-      usedKeys = [];
-    }
-
-    // Pick a random key from available ones
-    const picked = available[Math.floor(Math.random() * available.length)];
-
-    // Mark as used
-    usedKeys.push(picked);
-    try {
-      localStorage.setItem('garcia_used_keys', JSON.stringify(usedKeys));
-    } catch (e) {}
-
-    // Save this user's key + timestamp
-    const data = { key: picked, issuedAt: Date.now() };
-    saveData(data);
-
-    // Display it
+    var all    = await fetchKeys();
+    var picked = pickKey(all);
+    var data   = { key: picked, issuedAt: Date.now() };
+    saveDat(data);
     if (keyEl) keyEl.textContent = picked;
     if (subEl) subEl.textContent = 'All checkpoints complete — here is your script key';
-    startCooldownTimer(data, cooldownEl);
-
-  } catch (err) {
-    // Network error fallback
-    if (keyEl) keyEl.textContent = 'Error — please refresh';
-    if (subEl) subEl.textContent = 'Could not load keys. Check your connection.';
+    startTimer(data, timerEl);
+  } catch(err) {
+    if (keyEl) keyEl.textContent = 'Error loading key';
+    if (subEl) subEl.innerHTML = 'Could not load. <a href="javascript:getKey()" style="color:var(--gold);text-decoration:underline;">Tap to retry</a>';
+    if (timerEl) timerEl.textContent = '⚠ Check your connection';
   }
 }
 
-/* ── Cooldown countdown display ── */
-function startCooldownTimer(data, el) {
+/* ── Countdown timer ── */
+function startTimer(data, el) {
   if (!el) return;
-
   function tick() {
-    if (!isOnCooldown(data)) {
+    if (!onCooldown(data)) {
       el.textContent = '🔓 Key expired — refresh for a new one';
-      el.style.color = 'rgba(255,255,255,0.4)';
-      // Clear saved data so next visit gets a fresh key
-      localStorage.removeItem(STORAGE_KEY);
+      el.style.color = 'rgba(255,255,255,0.35)';
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
       return;
     }
-    el.textContent = `⏳ Key valid for: ${formatTimeLeft(data)}`;
+    el.textContent = '⏳ Key valid for: ' + timeLeft(data);
     setTimeout(tick, 1000);
   }
-
   tick();
 }
 
-/* ── Copy key to clipboard ── */
+/* ── Copy ── */
 function copyKey() {
-  const key = document.getElementById('keyValue').textContent;
-  if (!key || key === 'Loading...' || key === 'Error — please refresh') return;
-
-  const btn = document.getElementById('copyBtn');
-
-  navigator.clipboard.writeText(key).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = key;
-    ta.style.cssText = 'position:fixed;opacity:0;';
-    document.body.appendChild(ta);
-    ta.focus(); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  });
-
+  var key = document.getElementById('keyValue').textContent;
+  if (!key || key === 'Loading...' || key === 'Error loading key') return;
+  var btn = document.getElementById('copyBtn');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(key).then(function(){ flash(btn); }).catch(function(){ fallback(key, btn); });
+  } else {
+    fallback(key, btn);
+  }
+}
+function fallback(text, btn) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;font-size:16px;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  flash(btn);
+}
+function flash(btn) {
+  if (!btn) return;
   btn.textContent = 'Copied!';
   btn.classList.add('copied');
-  setTimeout(() => {
-    btn.textContent = 'Copy';
-    btn.classList.remove('copied');
-  }, 2000);
+  setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
 }
