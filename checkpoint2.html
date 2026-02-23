@@ -7,42 +7,34 @@
 <link rel="stylesheet" href="style.css">
 <script src="transition.js"></script>
 <style>
-  .btn.locked {
-    opacity: 0.4; cursor: not-allowed; filter: grayscale(0.4);
-  }
-  .btn.locked:hover { transform: none !important; box-shadow: 0 0 8px rgba(178,132,255,0.35) !important; }
-
   .visit-btn {
-    position: relative; width: 100%;
-    padding: clamp(12px,3vw,15px) 28px;
-    border: 2px solid var(--border); border-radius: 15px;
-    cursor: pointer; overflow: hidden;
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(13px,3.5vw,15px); font-weight: 800;
-    letter-spacing: 2px; color: var(--text); text-transform: uppercase;
-    background: linear-gradient(135deg, rgba(178,132,255,0.28) 0%, rgba(140,90,220,0.20) 100%);
-    box-shadow: 0 0 12px rgba(178,132,255,0.5), 0 0 24px rgba(178,132,255,0.2);
-    transition: transform 0.15s ease, box-shadow 0.25s ease;
-    -webkit-tap-highlight-color: transparent;
-    text-decoration: none; display: flex;
-    align-items: center; justify-content: center; gap: 10px;
+    position:relative; width:100%;
+    padding:clamp(12px,3vw,15px) 28px;
+    border:2px solid var(--border); border-radius:15px;
+    cursor:pointer; overflow:hidden;
+    font-family:'Nunito',sans-serif; font-size:clamp(13px,3.5vw,15px); font-weight:800;
+    letter-spacing:2px; color:var(--text); text-transform:uppercase;
+    background:linear-gradient(135deg,rgba(178,132,255,0.28) 0%,rgba(140,90,220,0.20) 100%);
+    box-shadow:0 0 12px rgba(178,132,255,0.5),0 0 24px rgba(178,132,255,0.2);
+    transition:transform 0.15s ease,box-shadow 0.25s ease;
+    -webkit-tap-highlight-color:transparent;
+    text-decoration:none; display:flex; align-items:center; justify-content:center; gap:10px;
   }
-  .visit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 18px rgba(178,132,255,0.75), 0 0 36px rgba(178,132,255,0.35); }
-  .visit-btn:active { transform: scale(0.98); }
-  .visit-btn svg { width:16px; height:16px; stroke:var(--border); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .visit-btn:hover { transform:translateY(-2px); box-shadow:0 0 18px rgba(178,132,255,0.75),0 0 36px rgba(178,132,255,0.35); }
+  .visit-btn:active { transform:scale(0.98); }
+  .visit-btn svg { width:16px;height:16px;stroke:var(--border);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round; }
 
   .status-text {
-    font-size: clamp(10px,2.8vw,12px); font-weight: 700;
-    color: rgba(178,132,255,0.6); text-align: center; letter-spacing: 0.5px;
-    transition: color 0.3s;
+    font-size:clamp(10px,2.8vw,12px); font-weight:700;
+    color:rgba(178,132,255,0.6); text-align:center; letter-spacing:0.5px; transition:color 0.3s;
   }
-  .status-text.unlocked { color: var(--green); }
+  .status-text.unlocked { color:var(--green); }
 
   .spinner {
-    display: inline-block; width: 10px; height: 10px;
-    border: 2px solid rgba(178,132,255,0.3); border-top-color: var(--border);
-    border-radius: 50%; animation: spin 0.8s linear infinite;
-    margin-right: 6px; vertical-align: middle;
+    display:inline-block; width:10px; height:10px;
+    border:2px solid rgba(178,132,255,0.3); border-top-color:var(--border);
+    border-radius:50%; animation:spin 0.8s linear infinite;
+    margin-right:6px; vertical-align:middle;
   }
 </style>
 </head>
@@ -57,7 +49,6 @@
     <span class="datetime" id="clock"></span>
   </div>
   <div class="content-box">
-
     <div class="step-track">
       <div class="step-node done">✓</div>
       <div class="step-line"><div class="step-line-fill" style="width:100%"></div></div>
@@ -67,179 +58,155 @@
       <div class="step-line"><div class="step-line-fill" style="width:0%"></div></div>
       <div class="step-node key-node">🔑</div>
     </div>
-
     <div class="badge cp">Checkpoint 2 of 3</div>
-
     <div class="icon-wrap">
       <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     </div>
-
     <h1>Checkpoint 2</h1>
     <p class="sub">You're halfway there — keep going!</p>
     <div class="divider"></div>
 
     <div class="btn-wrap">
-      <a class="visit-btn" id="visitBtn" href="#" target="_blank" rel="noopener" onclick="onVisit()">
+      <a class="visit-btn" id="visitBtn" href="https://lootlabs.gg/YOUR_CP2_LINK_HERE" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         Open Checkpoint Link
       </a>
     </div>
 
-    <p class="status-text" id="statusText">⚠ You must visit the link first</p>
+    <p class="status-text" id="statusText">⚠ Open the link above to unlock Continue</p>
 
     <div class="btn-wrap">
       <div class="btn-pulse" id="continuePulse" style="display:none"></div>
       <button class="btn locked" id="continueBtn" disabled>
-        <span class="btn-label" id="continueLabel">🔒 &nbsp;Locked</span>
+        <span class="btn-label" id="continueLabel">🔒  Locked</span>
       </button>
     </div>
 
     <div class="progress">
-      <div class="dot done"></div>
-      <div class="dot active"></div>
-      <div class="dot"></div>
-      <div class="dot"></div>
+      <div class="dot done"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div>
     </div>
   </div>
 </div>
 
 <script>
-  // ══════════════════════════════════════════════════
-  //  PASTE YOUR CHECKPOINT X LINKVERTISE/LOOTLABS URL
-  const CHECKPOINT_LINK = 'https://loot-link.com/s?G49dnTyG';
-  //  CHANGE THIS PER CHECKPOINT: cp1_done / cp2_done / cp3_done
-  const SESSION_KEY = 'cp2_done';
-  //  NEXT PAGE: checkpoint2.html / checkpoint3.html / key.html
-  const NEXT_PAGE = 'checkpoint3.html';
-  // ══════════════════════════════════════════════════
 
-  let visited = false;
-  let linkOpened = false;
-  let pollInterval = null;
+(function() {
+  var SKEY = 'cp2_done';
+  var NEXT = 'checkpoint3.html';
+  var MIN_AWAY_MS = 4000; // must be away at least 4 seconds
 
-  document.getElementById('visitBtn').href = CHECKPOINT_LINK;
+  var visited   = false;
+  var clickedAt = null;  // when user clicked the link
+  var poll      = null;
 
-  function onVisit() {
-    if (linkOpened) return;
-    linkOpened = true;
+  var visitBtn    = document.getElementById('visitBtn');
+  var continueBtn = document.getElementById('continueBtn');
+  var pulseEl     = document.getElementById('continuePulse');
+  var labelEl     = document.getElementById('continueLabel');
+  var statusEl    = document.getElementById('statusText');
 
-    // Set a flag in sessionStorage immediately when they click
-    sessionStorage.setItem(SESSION_KEY + '_clicked', '1');
-
-    // Start the status message after short delay
-    setTimeout(() => {
+  // ── When user clicks the link ──
+  visitBtn.addEventListener('click', function() {
+    if (visited) return;
+    clickedAt = Date.now();
+    sessionStorage.setItem(SKEY + '_clickedAt', String(clickedAt));
+    // Delay status update slightly so it shows after they leave
+    setTimeout(function() {
       if (!visited) {
-        document.getElementById('statusText').innerHTML =
-          '<span class="spinner"></span> Complete the link then come back here...';
+        statusEl.innerHTML = '<span class="spinner"></span> Complete the link then return here…';
       }
-    }, 1500);
+    }, 1000);
+  });
 
-    // Start polling immediately — catch return by ANY method
-    startPolling();
-  }
-
-  function startPolling() {
-    if (pollInterval) return;
-
-    // Poll every 500ms — catches mobile browser tab switching reliably
-    pollInterval = setInterval(() => {
-      if (visited) { clearInterval(pollInterval); return; }
-      if (document.visibilityState === 'visible' && linkOpened) {
-        onReturn();
-      }
-    }, 500);
-
-    // Also listen to every possible return event
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('pageshow', handlePageShow);
-  }
-
-  function handleVisibility() {
-    if (document.visibilityState === 'visible' && linkOpened && !visited) {
-      onReturn();
+  // ── Try to unlock — only if enough time has passed since click ──
+  function tryUnlock() {
+    if (visited || !clickedAt) return;
+    var away = Date.now() - clickedAt;
+    if (away >= MIN_AWAY_MS) {
+      doUnlock();
     }
   }
 
-  function handleFocus() {
-    if (linkOpened && !visited) onReturn();
-  }
-
-  function handlePageShow(e) {
-    // Fires when navigating back — very reliable on mobile
-    if (linkOpened && !visited) onReturn();
-  }
-
-  function onReturn() {
-    if (visited) return;
-    clearInterval(pollInterval);
-    document.removeEventListener('visibilitychange', handleVisibility);
-    window.removeEventListener('focus', handleFocus);
-    window.removeEventListener('pageshow', handlePageShow);
-    // Small grace period then unlock
-    setTimeout(unlock, 800);
-  }
-
-  function unlock() {
+  function doUnlock() {
     if (visited) return;
     visited = true;
-    sessionStorage.setItem(SESSION_KEY, '1');
-
-    document.getElementById('statusText').textContent = '✓ Link completed — you may continue!';
-    document.getElementById('statusText').classList.add('unlocked');
-
-    const visitBtn = document.getElementById('visitBtn');
+    clearPoll();
+    sessionStorage.setItem(SKEY, '1');
+    statusEl.textContent = '✓ Link completed — you may continue!';
+    statusEl.classList.add('unlocked');
     visitBtn.style.opacity = '0.35';
     visitBtn.style.pointerEvents = 'none';
-
-    const continueBtn = document.getElementById('continueBtn');
     continueBtn.classList.remove('locked');
     continueBtn.disabled = false;
-    document.getElementById('continuePulse').style.display = 'block';
-    document.getElementById('continueLabel').innerHTML =
-      'Continue <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--border);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    pulseEl.style.display = 'block';
+    labelEl.innerHTML = 'Continue <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--border);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
   }
 
-  document.getElementById('continueBtn').addEventListener('click', function() {
+  function clearPoll() {
+    if (poll) { clearInterval(poll); poll = null; }
+    document.removeEventListener('visibilitychange', onVis);
+    window.removeEventListener('focus', tryUnlock);
+    window.removeEventListener('pageshow', tryUnlock);
+  }
+
+  // ── Visibility / focus events ──
+  function onVis() {
+    if (document.visibilityState === 'visible') tryUnlock();
+  }
+  document.addEventListener('visibilitychange', onVis);
+  window.addEventListener('focus',    tryUnlock);
+  window.addEventListener('pageshow', tryUnlock); // mobile back-navigation
+
+  // ── Poll every 500ms as safety net ──
+  poll = setInterval(function() {
+    if (visited) { clearPoll(); return; }
+    if (document.visibilityState === 'visible' && clickedAt) tryUnlock();
+  }, 500);
+
+  // ── Continue button ──
+  continueBtn.addEventListener('click', function() {
     if (!visited) return;
     this.classList.add('verified');
-    document.getElementById('continueLabel').innerHTML = '✓ &nbsp;Verified';
-    navigateTo(NEXT_PAGE);
+    labelEl.innerHTML = '✓ &nbsp;Verified';
+    setTimeout(function() { navigateTo(NEXT); }, 500);
   });
 
-  // Restore if already completed this session
-  if (sessionStorage.getItem(SESSION_KEY)) {
-    visited = true; linkOpened = true;
-    unlock();
+  // ── Restore if already done this session ──
+  if (sessionStorage.getItem(SKEY)) {
+    clickedAt = Date.now() - 999999;
+    doUnlock();
+  } else {
+    // Restore clicked timestamp if page was refreshed mid-checkpoint
+    var saved = sessionStorage.getItem(SKEY + '_clickedAt');
+    if (saved) {
+      clickedAt = parseInt(saved, 10);
+      statusEl.innerHTML = '<span class="spinner"></span> Complete the link then return here…';
+    }
   }
-  // Also restore if they clicked but hadn't returned yet
-  else if (sessionStorage.getItem(SESSION_KEY + '_clicked')) {
-    linkOpened = true;
-    document.getElementById('statusText').innerHTML =
-      '<span class="spinner"></span> Complete the link then come back here...';
-    startPolling();
-  }
+})();
 
 
-  /* Stars */
-  const starsEl = document.getElementById('stars');
-  for (let i = 0; i < 110; i++) {
-    const s = document.createElement('div'); s.className = 'star';
-    const sz = Math.random() * 2 + 0.5;
-    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${2+Math.random()*5}s;--delay:${Math.random()*7}s;--op:${0.2+Math.random()*0.6};`;
-    starsEl.appendChild(s);
+(function() {
+  var el = document.getElementById('stars');
+  for (var i = 0; i < 110; i++) {
+    var s = document.createElement('div'); s.className = 'star';
+    var sz = Math.random()*2+0.5;
+    s.style.cssText='width:'+sz+'px;height:'+sz+'px;top:'+(Math.random()*100)+'%;left:'+(Math.random()*100)+'%;--d:'+(2+Math.random()*5)+'s;--delay:'+(Math.random()*7)+'s;--op:'+(0.2+Math.random()*0.6)+';';
+    el.appendChild(s);
   }
+})();
+(function() {
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function pad(n){return String(n).padStart(2,'0');}
+  function tick(){
+    var n=new Date(),h=n.getHours(),m=n.getMinutes(),s=n.getSeconds();
+    var ap=h>=12?'PM':'AM';h=h%12||12;
+    var el=document.getElementById('clock');
+    if(el)el.textContent=days[n.getDay()]+' '+pad(h)+':'+pad(m)+':'+pad(s)+' '+ap;
+  }
+  tick();setInterval(tick,1000);
+})();
 
-  /* Clock */
-  function updateClock() {
-    const now = new Date();
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-    const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-    document.getElementById('clock').textContent =
-      `${days[now.getDay()]} ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
-  }
-  updateClock(); setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
